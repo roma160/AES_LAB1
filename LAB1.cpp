@@ -40,30 +40,35 @@ __forceinline void exec_operation(volatile T a, volatile T b, volatile T& res, c
 		exec_operation<T, end, O, start + 1>(a, b, res, op);
 }
 
-template <operation O, typename T>
-double exec(const unsigned int count = 100)
+typedef unsigned long long _loop_t;
+template <operation O, typename T, const unsigned int repeat>
+double exec(const _loop_t count = 100)
 {
 	const operation_t<O> op_t{};
 	const auto begin = chrono::high_resolution_clock::now();
 
 	T r = 0, a = 1, b = 1;
-	for (unsigned int i = 0; i < count; i++) {
+	for (_loop_t i = 0; i < count; i++) {
 		// https://stackoverflow.com/questions/37980791/conditional-function-invocation-using-template
-		exec_operation<T, 20>(a, b, r, op_t);
+		exec_operation<T, repeat>(a, b, r, op_t);
 	}
 
 	const auto end = chrono::high_resolution_clock::now();
 	return (double)chrono::duration_cast<chrono::milliseconds>(end - begin).count();
 }
 
-typedef int checking_type;
+
+template <operation O, typename T, const unsigned int repeat = 20>
+double check(const _loop_t count = 100)
+{
+	double micros_op = exec<O, T, repeat>(count);
+	double micros_no = exec<no_operation, T, repeat>(count);
+	return count * 1e6 * repeat / (micros_op);
+}
 
 int main()
 {
 	cout.precision(4);
-	double operations = 1e7;
-	double micros_op = exec<division, checking_type>(operations);
-	double micros_no = exec<no_operation, checking_type>(operations);
-	cout << operations * 1e6 / (micros_op - micros_no);
+	cout << check<addition, int>(1e8);
 	return 0;
 }
