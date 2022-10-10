@@ -87,7 +87,7 @@ double run_test(const _loop_t count = 100)
 		ret_based += measure_time<T, O, R>(a, b, res, op, op_based);
 		ret_not_based += measure_time<T, O, R>(a, b, res, op, op_not_based);
 	}
-	return 2*ret_not_based - ret_based;
+	return R * count * 1e9 / (2*ret_not_based - ret_based);
 }
 
 
