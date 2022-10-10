@@ -1,5 +1,6 @@
 ﻿#include <iostream>
 #include <chrono>
+#include <Windows.h>
 
 using namespace std;
 
@@ -18,19 +19,29 @@ using operation_t = integral_constant<operation, t>;
 
 template<typename T>
 __forceinline void exec_operation(const T a, const T b, volatile T& res, operation_t<addition>)
-{ res = a + b; }
+{
+	res = a + b;
+}
 template<typename T>
 __forceinline void exec_operation(const T a, const T b, volatile T& res, operation_t<subtraction>)
-{ res = a - b; }
+{
+	res = a - b;
+}
 template<typename T>
 __forceinline void exec_operation(const T a, const T b, volatile T& res, operation_t<multiplication>)
-{ res = a * b; }
+{
+	res = a * b;
+}
 template<typename T>
 __forceinline void exec_operation(const T a, const T b, volatile T& res, operation_t<division>)
-{ res = a / b; }
+{
+	res = a / b;
+}
 template<typename T>
 __forceinline void exec_operation(const T a, const T b, volatile T& res, operation_t<no_operation>)
-{ res = a; res = b; }
+{
+	res = a; res = b;
+}
 
 template<typename T, const unsigned int end, operation O, const unsigned int start = 0>
 __forceinline void exec_operation(volatile T a, volatile T b, volatile T& res, const operation_t<O>& op)
@@ -45,7 +56,9 @@ template <operation O, typename T, const unsigned int repeat>
 double exec(const _loop_t count = 100)
 {
 	const operation_t<O> op_t{};
-	const auto begin = chrono::high_resolution_clock::now();
+	LARGE_INTEGER freq, begg, end;
+	QueryPerformanceFrequency(&freq);
+	QueryPerformanceCounter(&begg);
 
 	T r = 0, a = 1, b = 1;
 	for (_loop_t i = 0; i < count; i++) {
@@ -53,8 +66,8 @@ double exec(const _loop_t count = 100)
 		exec_operation<T, repeat>(a, b, r, op_t);
 	}
 
-	const auto end = chrono::high_resolution_clock::now();
-	return (double)chrono::duration_cast<chrono::nanoseconds>(end - begin).count();
+	QueryPerformanceCounter(&end);
+	return (double)(end.QuadPart - begg.QuadPart) / freq.QuadPart;
 }
 
 
@@ -63,26 +76,41 @@ template <operation O, typename T, const unsigned int repeat = 20>
 double check(const _loop_t count = 100)
 {
 	double t_op1 = 1, t_op2 = 0, t_no2 = 0, t_no1 = 0, delta;
-	while((delta = t_op2 - t_op1 - t_no2) <= 0)
+	while ((delta = t_op2 - t_op1 - t_no2) <= 0)
 	{
 		t_op1 = exec<O, T, repeat>(count);
-		t_op2 = exec<O, T, 2*repeat>(count);
+		t_op2 = exec<O, T, 2 * repeat>(count);
 		t_no1 = exec<no_operation, T, 1>(count);
 		t_no2 = exec<no_operation, T, repeat>(count);
 	}
-	return count * 1e9 * repeat / delta;
+	return (double)count / delta;
 }
 
+
+double e(const _loop_t count = 100)
+{
+	bool res = true;
+	LARGE_INTEGER freq, begg, end;
+	res = QueryPerformanceFrequency(&freq);
+	res = QueryPerformanceCounter(&begg);
+
+	int a = 1, b = 1, c = 1, d = 1;
+	for (_loop_t i = 0; i < count; i++) {
+		a = b + c;
+		c = a + d;
+		a += c;
+		b += d;
+	}
+
+	QueryPerformanceCounter(&end);
+	double s = (double)(end.QuadPart - begg.QuadPart) / freq.QuadPart;
+	return s;
+}
 
 
 int main()
 {
 	cout.precision(4);
-	double r = 1e11;
-	while(r > 1e10)
-	{
-		r = check<addition, int, 5>(1e3);
-		cout << r << "\n";
-	}
+	cout << check<addition, int>(1e5);
 	return 0;
 }
