@@ -146,31 +146,47 @@ void print_result(const double max, const tuple<string, string, double>& result)
 		<< round(std::get<2>(result) * 100 / max) << "%\n";
 }
 
+constexpr int types_num = 6, ops_num = 4;
+void take_measurements(vector<vector<tuple<string, string, double>>> &results, double& max, double& avg)
+{
+	constexpr _loop_t R = 100, C = 1e5;
+	constexpr double infty = numeric_limits<double>::infinity();
+
+	max = avg = 0;
+	results = vector<vector<tuple<string, string, double>>>(types_num, vector<tuple<string, string, double>>(ops_num));
+
+	tuple<string, string, double> buff_result{};
+	double& time = std::get<2>(buff_result);
+	for (int type = 0; type < types_num; type++)
+		for (int op = 0; op < ops_num; op++) {
+			time = 0;
+			while (time <= 0 || !(time < infty)) {
+				buff_result = run_test_for<R, C>(type, (operation)op);
+			}
+			results[type][op] = buff_result;
+
+			if (time > max) max = time;
+			avg += time;
+		}
+	avg /= types_num * ops_num;
+}
+
 int main()
 {
 	cout.precision(6);
-	double max = 0;
-	vector<tuple<string, string, double>> results(0);
-	constexpr int types_num = 6;
-	constexpr _loop_t R = 100, C = 1e5;
+	double max = 1e9, avg = 1;
+	vector<vector<tuple<string, string, double>>> results;
 
-	for (int type = 0; type < types_num; type++)
-		for (int op = 0; op < 4; op++) {
-			tuple<string, string, double> buff_result{};
-			while (std::get<2>(buff_result) <= 0 || !(std::get<2>(buff_result) < numeric_limits<double>::infinity()))
-			{
-				buff_result = run_test_for<50, (_loop_t)1e5>(type, (operation)op);
-			}
-			results.push_back(buff_result);
-
-			const double buff = std::get<2>(*(results.end() - 1));
-			if (buff > max) max = buff;
-		}
+	// Running tests till system is stable
+	while (max / avg > 5) {
+		take_measurements(results, max, avg);
+	}
 
 	cout << max << "\n";
-	for (int i = 0; i < 4 * types_num; i++) {
-		if (i % 4 == 0 && i != 0) cout << "\n";
-		print_result(max, results[i]);
+	for (int type = 0; type < types_num; type++) {
+		for (int op = 0; op < ops_num; op++)
+			print_result(max, results[type][op]);
+		cout << "\n";
 	}
 	return 0;
 }
