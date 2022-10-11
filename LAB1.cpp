@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include <iomanip>
+#include <cmath>
 
 using namespace std;
 
@@ -45,24 +46,27 @@ enum base_using { yes, no };
 template <base_using T>
 using base_using_t = integral_constant<base_using, T>;
 
+template <typename T>
+using rep_arg_t = volatile T&;
+
 template<typename T, operation O, const _loop_t R, enable_if_t<0 == R, bool> = 0>
-__forceinline void exec_repeated(volatile T& a, volatile T& b, volatile T& res, const operation_t<O>& op, const base_using_t<no>)
+__forceinline void exec_repeated(rep_arg_t<T> a, rep_arg_t<T> b, volatile T& res, const operation_t<O>& op, const base_using_t<no>)
 { exec_operation(a, b, res, op); }
 template<typename T, operation O, const _loop_t R, enable_if_t<0 == R, bool> = 0>
-__forceinline void exec_repeated(volatile T& a, volatile T& b, volatile T& res, const operation_t<O>& op, const base_using_t<yes>)
+__forceinline void exec_repeated(rep_arg_t<T> a, rep_arg_t<T> b, volatile T& res, const operation_t<O>& op, const base_using_t<yes>)
 {
 	exec_operation(a, b, res, op);
 	exec_operation(a, b, res, no_operation_constant);
 }
 template<typename T, operation O, const _loop_t R, base_using B, enable_if_t<0 < R, bool > = 0>
-__forceinline void exec_repeated(volatile T& a, volatile T& b, volatile T& res, const operation_t<O>& op, const base_using_t<B>& base)
+__forceinline void exec_repeated(rep_arg_t<T> a, rep_arg_t<T> b, volatile T& res, const operation_t<O>& op, const base_using_t<B>& base)
 {
 	exec_repeated<T, O, 0>(a, b, res, op, base);
 	exec_repeated<T, O, R-1, B>(a, b, res, op, base);
 }
 
 template<typename T, operation O, const _loop_t R, base_using B>
-double measure_time(volatile T& a, volatile T& b, volatile T& res, const operation_t<O>& op, const base_using_t<B>& base)
+double measure_time(rep_arg_t<T> a, rep_arg_t<T> b, volatile T& res, const operation_t<O>& op, const base_using_t<B>& base)
 {
 	chrono::high_resolution_clock::time_point begin{}, end{};
 
@@ -124,6 +128,8 @@ tuple<string, string, double> run_test_for(const int type_id, const operation O)
 		return tuple_cat(make_tuple("char"), run_test_for<char, R, C>(O));
 	case 4:
 		return tuple_cat(make_tuple("double"), run_test_for<double, R, C>(O));
+	case 5:
+		return tuple_cat(make_tuple("float"), run_test_for<float, R, C>(O));
 	default:
 		return tuple_cat(make_tuple(""), run_test_for<int, R, C>(O));
 	}
@@ -145,11 +151,19 @@ int main()
 	cout.precision(6);
 	double max = 0;
 	vector<tuple<string, string, double>> results(0);
-	const int types_num = 5;
+	constexpr int types_num = 6;
+	constexpr _loop_t R = 100, C = 1e5;
+
 	for (int type = 0; type < types_num; type++)
 		for (int op = 0; op < 4; op++) {
-			results.push_back(run_test_for<50, (_loop_t)1e5>(type, (operation)op));
-			double buff = std::get<2>(*(results.end() - 1));
+			tuple<string, string, double> buff_result{};
+			while (std::get<2>(buff_result) <= 0 || !(std::get<2>(buff_result) < numeric_limits<double>::infinity()))
+			{
+				buff_result = run_test_for<50, (_loop_t)1e5>(type, (operation)op);
+			}
+			results.push_back(buff_result);
+
+			const double buff = std::get<2>(*(results.end() - 1));
 			if (buff > max) max = buff;
 		}
 
