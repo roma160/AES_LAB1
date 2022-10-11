@@ -37,7 +37,10 @@ __forceinline void exec_operation(op_arg_t<T> a, op_arg_t<T> b, volatile T& res,
 { res = a / b; }
 template<typename T>
 __forceinline void exec_operation(op_arg_t<T> a, op_arg_t<T> b, volatile T& res, operation_t<no_operation>)
-{ res = a; res = b; }
+{
+	res = a;
+	//res = b;
+}
 
 
 
@@ -51,7 +54,9 @@ using rep_arg_t = volatile T&;
 
 template<typename T, operation O, const _loop_t R, enable_if_t<0 == R, bool> = 0>
 __forceinline void exec_repeated(rep_arg_t<T> a, rep_arg_t<T> b, volatile T& res, const operation_t<O>& op, const base_using_t<no>)
-{ exec_operation(a, b, res, op); }
+{
+	exec_operation(a, b, res, op);
+}
 template<typename T, operation O, const _loop_t R, enable_if_t<0 == R, bool> = 0>
 __forceinline void exec_repeated(rep_arg_t<T> a, rep_arg_t<T> b, volatile T& res, const operation_t<O>& op, const base_using_t<yes>)
 {
@@ -78,6 +83,9 @@ double measure_time(rep_arg_t<T> a, rep_arg_t<T> b, volatile T& res, const opera
 }
 
 
+#pragma optimize( "", off )
+#pragma GCC push_options
+#pragma GCC optimize ("O0")
 template <typename T, operation O, const _loop_t R>
 double run_test(const _loop_t count = 100)
 {
@@ -85,14 +93,22 @@ double run_test(const _loop_t count = 100)
 	constexpr base_using_t<no> op_not_based{};
 
 	const operation_t<O> op{};
-	double ret_based = 0, ret_not_based = 0;
+	double ret = 0, buff;
 	T res = 0, a = 1, b = 1;
 	for (_loop_t i = 0; i < count; i++) {
-		ret_based += measure_time<T, O, R>(a, b, res, op, op_based);
-		ret_not_based += measure_time<T, O, R>(a, b, res, op, op_not_based);
+		buff = 2 * measure_time<T, O, R>(a, b, res, op, op_not_based) - 
+			measure_time<T, O, R>(a, b, res, op, op_based);
+		if(buff < 0)
+		{
+			i--;
+			continue;
+		}
+		ret += buff;
 	}
-	return R * count * 1e9 / (2*ret_not_based - ret_based);
+	return R * count * 1e9 / ret;
 }
+#pragma GCC pop_options
+#pragma optimize( "", on )
 
 
 template<typename T, const _loop_t R, const _loop_t C>
@@ -127,9 +143,9 @@ tuple<string, string, double> run_test_for(const int type_id, const operation O)
 	case 3:
 		return tuple_cat(make_tuple("char"), run_test_for<char, R, C>(O));
 	case 4:
-		return tuple_cat(make_tuple("double"), run_test_for<double, R, C>(O));
-	case 5:
 		return tuple_cat(make_tuple("float"), run_test_for<float, R, C>(O));
+	case 5:
+		return tuple_cat(make_tuple("double"), run_test_for<double, R, C>(O));
 	default:
 		return tuple_cat(make_tuple(""), run_test_for<int, R, C>(O));
 	}
