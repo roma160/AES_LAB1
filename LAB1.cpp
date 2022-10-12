@@ -8,6 +8,12 @@
 
 using namespace std;
 
+#if defined(__GNUC__) || defined(__GNUG__)
+#define in_void void __attribute__((always_inline))
+#else
+#define in_void __forceinline void
+#endif
+
 enum operation
 {
 	addition,
@@ -24,19 +30,19 @@ template <typename T>
 using op_arg_t = T;
 
 template<typename T>
-__forceinline void exec_operation(op_arg_t<T> a, op_arg_t<T> b, volatile T& res, operation_t<addition>)
+in_void exec_operation(op_arg_t<T> a, op_arg_t<T> b, volatile T& res, operation_t<addition>)
 { res = a + b; }
 template<typename T>
-__forceinline void exec_operation(op_arg_t<T> a, op_arg_t<T> b, volatile T& res, operation_t<subtraction>)
+in_void exec_operation(op_arg_t<T> a, op_arg_t<T> b, volatile T& res, operation_t<subtraction>)
 { res = a - b; }
 template<typename T>
-__forceinline void exec_operation(op_arg_t<T> a, op_arg_t<T> b, volatile T& res, operation_t<multiplication>)
+in_void exec_operation(op_arg_t<T> a, op_arg_t<T> b, volatile T& res, operation_t<multiplication>)
 { res = a * b; }
 template<typename T>
-__forceinline void exec_operation(op_arg_t<T> a, op_arg_t<T> b, volatile T& res, operation_t<division>)
+in_void exec_operation(op_arg_t<T> a, op_arg_t<T> b, volatile T& res, operation_t<division>)
 { res = a / b; }
 template<typename T>
-__forceinline void exec_operation(op_arg_t<T> a, op_arg_t<T> b, volatile T& res, operation_t<no_operation>)
+in_void exec_operation(op_arg_t<T> a, op_arg_t<T> b, volatile T& res, operation_t<no_operation>)
 {
 	res = a;
 	//res = b;
@@ -53,18 +59,18 @@ template <typename T>
 using rep_arg_t = volatile T&;
 
 template<typename T, operation O, const _loop_t R, enable_if_t<0 == R, bool> = 0>
-__forceinline void exec_repeated(rep_arg_t<T> a, rep_arg_t<T> b, volatile T& res, const operation_t<O>& op, const base_using_t<no>)
+in_void exec_repeated(rep_arg_t<T> a, rep_arg_t<T> b, volatile T& res, const operation_t<O>& op, const base_using_t<no>)
 {
 	exec_operation(a, b, res, op);
 }
 template<typename T, operation O, const _loop_t R, enable_if_t<0 == R, bool> = 0>
-__forceinline void exec_repeated(rep_arg_t<T> a, rep_arg_t<T> b, volatile T& res, const operation_t<O>& op, const base_using_t<yes>)
+in_void exec_repeated(rep_arg_t<T> a, rep_arg_t<T> b, volatile T& res, const operation_t<O>& op, const base_using_t<yes>)
 {
 	exec_operation(a, b, res, op);
 	exec_operation(a, b, res, no_operation_constant);
 }
 template<typename T, operation O, const _loop_t R, base_using B, enable_if_t<0 < R, bool > = 0>
-__forceinline void exec_repeated(rep_arg_t<T> a, rep_arg_t<T> b, volatile T& res, const operation_t<O>& op, const base_using_t<B>& base)
+in_void exec_repeated(rep_arg_t<T> a, rep_arg_t<T> b, volatile T& res, const operation_t<O>& op, const base_using_t<B>& base)
 {
 	exec_repeated<T, O, 0>(a, b, res, op, base);
 	exec_repeated<T, O, R-1, B>(a, b, res, op, base);
