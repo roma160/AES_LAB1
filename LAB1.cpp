@@ -9,7 +9,7 @@
 using namespace std;
 
 #if defined(__GNUC__) || defined(__GNUG__)
-#define in_void void __attribute__((always_inline))
+#define in_void inline void __attribute__((always_inline))
 #else
 #define in_void __forceinline void
 #endif
@@ -102,7 +102,7 @@ double run_test(const _loop_t count = 100)
 	double ret = 0, buff;
 	T res = 0, a = 1, b = 1;
 	for (_loop_t i = 0; i < count; i++) {
-		buff = 2 * measure_time<T, O, R>(a, b, res, op, op_not_based) - 
+		buff = 2 * measure_time<T, O, R>(a, b, res, op, op_not_based) -
 			measure_time<T, O, R>(a, b, res, op, op_based);
 		if(buff < 0)
 		{
