@@ -27,7 +27,7 @@ using operation_t = integral_constant<operation, T>;
 constexpr operation_t<no_operation> no_operation_constant{};
 
 template <typename T>
-using op_arg_t = T;
+using op_arg_t = volatile T;
 
 template<typename T>
 in_void exec_operation(op_arg_t<T> a, op_arg_t<T> b, volatile T& res, operation_t<addition>)
